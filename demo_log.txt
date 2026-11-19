@@ -1,0 +1,82 @@
+
+======== Scene 1 - curriculum question (Agentic RAG) ========
+HTTP Request: GET https://api.groq.com/openai/v1/models "HTTP/1.1 200 OK"
+[llm] using Groq model: openai/gpt-oss-120b
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] orchestrator -> Routing to curriculum_question worker
+[ToolMessage] rag_retriever <- {"status": "ok", "latency_ms": 266.3, "within_sla": true, "n_passages": 3}
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] advisor -> A list is **mutable** – you can append, remove, and reassign its items.   A tuple is **immutable** – once created it cannot change, which makes it hashable (so 
+A list is **mutable** – you can append, remove, and reassign its items.  
+A tuple is **immutable** – once created it cannot change, which makes it hashable (so it can be used as a dictionary key) and slightly faster. Use lists for collections that need to change, and tuples for fixed records such as coordinates.
+
+**Source:** [01_python_fundamentals.md] – “Lists vs tuples” section.
+
+======== Scene 2a - secure grading (Evaluator-Optimizer) ========
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] orchestrator -> Routing to code_submission worker
+[ToolMessage] python_sandbox <- {"status": "ok", "stdout": "True False\n", "stderr": "", "returncode": 0}
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] assessor -> Draft grade: {"score":95,"feedback_points":["The function correctly determines evenness and matches the expected output.","Clear docstring and readable naming m
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] judge -> approved=True issues=[]
+[AIMessage] assessor -> Score: 95/100 - PASS - The function correctly determines evenness and matches the expected output. - Clear docstring and readable naming make the code easy to u
+Score: 95/100 - PASS
+- The function correctly determines evenness and matches the expected output.
+- Clear docstring and readable naming make the code easy to understand.
+- Code is concise, idiomatic, and contains no dead code.
+- Consider adding type hints and handling non‑integer inputs for extra robustness.
+
+======== Scene 2b - malicious submission is blocked by the sandbox ========
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] orchestrator -> Routing to code_submission worker
+[ToolMessage] python_sandbox <- {"status": "blocked", "stdout": "", "stderr": "Blocked import: os"}
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] assessor -> Draft grade: {"score":10,"feedback_points":["The code attempts to import the os module, which is blocked in the execution environment, causing a runtime error a
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] judge -> approved=True issues=[]
+[AIMessage] assessor -> Score: 10/100 - FAIL - The code attempts to import the os module, which is blocked in the execution environment, causing a runtime error and preventing any outp
+sandbox: {'status': 'blocked', 'stdout': '', 'stderr': 'Blocked import: os'}
+
+======== Scene 3 - placement from live DB records + HITL (Fawry is tier-1) ========
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] orchestrator -> Routing to placement_request worker
+[ToolMessage] match_partners <- {"status": "ok", "learner": {"learner_id": "SPR-1001", "name": "Ahmed Youssef", "bootcamp_track": "Advanced Agentic AI", "completed_modules": 12, "python_assign
+PAUSED for human approval: Ahmed Youssef ['Fawry - AI Engineer (Agentic)']
+[AIMessage] advisor -> Verified matches for Ahmed Youssef from live Sprints records: - Fawry: AI Engineer (Agentic) (25,000-45,000 EGP) [approved by human reviewer] - Swvl: AI Enginee
+Verified matches for Ahmed Youssef from live Sprints records:
+- Fawry: AI Engineer (Agentic) (25,000-45,000 EGP) [approved by human reviewer]
+- Swvl: AI Engineer (Agentic) (22,000-35,000 EGP)
+
+======== Scene 4 - ineligible learner gets NO invented match ========
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] orchestrator -> Routing to placement_request worker
+[ToolMessage] match_partners <- {"status": "not_eligible", "learner": {"learner_id": "SPR-1021", "name": "Eslam Wael", "bootcamp_track": "Advanced Agentic AI", "completed_modules": 1, "python_
+[AIMessage] advisor -> Readiness is 'Dropped', not 'Ready for Placement'.
+Readiness is 'Dropped', not 'Ready for Placement'.
+
+======== Scene 5 - ReAct agent + custom SQL tool ========
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+HumanMessage: For learner SPR-1001 give completed modules, target salary in EGP and preferred employers.
+AIMessage: [{'name': 'query_learner_db', 'args': {'sql': "SELECT learner_id, completed_modules, target_salary_egp, preferred_employers FROM learners WHERE learner_id = 'SPR-1001';"}, 'id': 'fc_ce182902-2704-43da-83e8-2dde309bcbcf', 'type': 'tool_call'}]
+ToolMessage: {"status": "ok", "rows": [{"learner_id": "SPR-1001", "completed_modules": 12, "target_salary_egp": 30000, "preferred_employers": "Fawry, Swvl"}]}
+AIMessage: Learner **SPR-1001** has:
+
+- **Completed modules:** 12  
+- **Target salary:** 30,000 EGP  
+- **Preferred employers:** Fawry, Swvl
+
+======== Scene 6 - Agentic RAG re-search on an out-of-curriculum question ========
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] orchestrator -> Routing to curriculum_question worker
+[ToolMessage] rag_retriever <- {"status": "ok", "latency_ms": 109.9, "within_sla": true, "n_passages": 3}
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[ToolMessage] rag_retriever <- {"status": "ok", "latency_ms": 93.7, "within_sla": true, "n_passages": 3}
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[ToolMessage] rag_retriever <- {"status": "ok", "latency_ms": 97.3, "within_sla": true, "n_passages": 3}
+HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+[AIMessage] advisor -> I couldn't find this in the Sprints curriculum, so I won't guess. Please ask a human advisor.
+searches made: 3 | last query: Sprints refund policy for withdrawn learners
+I couldn't find this in the Sprints curriculum, so I won't guess. Please ask a human advisor.
